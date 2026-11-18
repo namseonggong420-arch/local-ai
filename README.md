@@ -26,6 +26,7 @@
 ---
 
 # 📄 Phase 2: 보안형 로컬 PDF 문서 분석 비서 (Local RAG)
+<img width="631" height="979" alt="스크린샷 2026-11-18 183337" src="https://github.com/user-attachments/assets/06f4b1b4-eda0-4c23-8880-ecdb9aaa7153" />
 
 사내 데이터시트 및 공정 매뉴얼의 외부 유출을 원천 차단하기 위해, 로컬 환경에서 PDF 문서를 벡터화하고 출처(페이지 번호) 기반으로 답변하는 RAG 시스템입니다.
 
