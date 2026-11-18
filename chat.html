@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>My Local AI Chat (RTX 5060)</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #0f1117; color: #e6edf3; font-family: 'Malgun Gothic', sans-serif; display: flex; justify-content: center; height: 100vh; }
+  #app { width: 100%; max-width: 820px; display: flex; flex-direction: column; border-left: 1px solid #30363d; border-right: 1px solid #30363d; background: #161b22; }
+  header { padding: 14px 20px; background: #010409; border-bottom: 1px solid #30363d; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+  .modes { display: flex; gap: 8px; }
+  button { background: #21262d; color: #c9d1d9; border: 1px solid #30363d; padding: 7px 13px; border-radius: 6px; cursor: pointer; font-size: 13px; transition: 0.15s; }
+  button:hover { background: #30363d; }
+  button.active { background: #1f6feb; color: #fff; border-color: #388bfd; font-weight: bold; }
+  #clear-btn { background: #3d1d20; border-color: #f85149; color: #ff7b72; }
+  #messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
+  .msg { max-width: 82%; padding: 12px 16px; border-radius: 12px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; font-size: 15px; }
+  .user { align-self: flex-end; background: #1f6feb; color: #fff; border-bottom-right-radius: 2px; }
+  .ai { align-self: flex-start; background: #21262d; border: 1px solid #30363d; border-bottom-left-radius: 2px; }
+  .stats { margin-top: 8px; padding-top: 6px; border-top: 1px solid #30363d; font-size: 11px; color: #8b949e; font-family: Consolas, monospace; }
+  .code-wrap { position: relative; margin: 8px 0; }
+  pre { background: #0d1117; padding: 12px; border-radius: 8px; border: 1px solid #30363d; overflow-x: auto; font-family: Consolas, monospace; font-size: 13px; color: #79c0ff; margin: 0; }
+  .copy-btn { position: absolute; top: 6px; right: 6px; padding: 3px 8px; font-size: 11px; background: #21262d; border: 1px solid #30363d; color: #c9d1d9; }
+  #input-box { padding: 14px; background: #010409; border-top: 1px solid #30363d; display: flex; gap: 10px; }
+  textarea { flex: 1; background: #0d1117; color: #fff; border: 1px solid #30363d; border-radius: 8px; padding: 10px 12px; resize: none; height: 48px; font-family: inherit; font-size: 14px; }
+  textarea:focus { outline: none; border-color: #58a6ff; }
+  #send-btn { background: #238636; border-color: #2ea043; color: #fff; font-weight: bold; padding: 0 20px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="modes">
+      <button class="mode-btn active" data-prompt="당신은 친절하고 유능한 한국어 AI 비서입니다.">일반 대화</button>
+      <button class="mode-btn" data-prompt="당신은 시니어 웹 개발자입니다. HTML, CSS, JavaScript 코드를 생략 없이 깔끔하게 작성해 주세요.">HTML/코딩 전문가</button>
+      <button class="mode-btn" data-prompt="사용자의 질문이나 글에 대해 가장 중요한 핵심만 딱 3줄로 번호를 매겨 요약해 주세요.">핵심 3줄 요약</button>
+    </div>
+    <button id="clear-btn">대화 초기화</button>
+  </header>
+  <div id="messages"><div class="msg ai">로컬 AI(qwen2.5-coder:7b) 준비 완료! 무엇이든 물어보세요.</div></div>
+  <div id="input-box">
+    <textarea id="input" placeholder="메시지 입력 (Enter 전송 / Shift+Enter 줄바꿈)"></textarea>
+    <button id="send-btn">전송</button>
+  </div>
+</div>
+
+<script>
+const messagesDiv = document.getElementById('messages');
+const input = document.getElementById('input');
+const sendBtn = document.getElementById('send-btn');
+let systemPrompt = document.querySelector('.mode-btn.active').dataset.prompt;
+let history = [];
+
+document.querySelectorAll('.mode-btn').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    systemPrompt = btn.dataset.prompt;
+    history = [];
+    appendMsg('ai', `[모드 변경] ${btn.innerText} 모드로 전환되었습니다.`);
+  };
+});
+
+document.getElementById('clear-btn').onclick = () => {
+  history = [];
+  messagesDiv.innerHTML = '<div class="msg ai">대화가 초기화되었습니다.</div>';
+};
+
+function escapeHtml(str) {
+  return str.replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>');
+}
+
+function formatText(text) {
+  const parts = text.split(/```/);
+  return parts.map((part, idx) => {
+    if (idx % 2 === 1) {
+      const code = part.replace(/^[a-zA-Z]+\n/, '');
+      return `<div class="code-wrap"><button class="copy-btn" onclick="copyCode(this)">복사</button><pre>${escapeHtml(code)}</pre></div>`;
+    }
+    return escapeHtml(part);
+  }).join('');
+}
+
+function copyCode(btn) {
+  const code = btn.nextElementSibling.innerText;
+  navigator.clipboard.writeText(code);
+  btn.innerText = '복사됨!';
+  setTimeout(() => btn.innerText = '복사', 1500);
+}
+
+function appendMsg(role, text) {
+  const div = document.createElement('div');
+  div.className = `msg ${role}`;
+  div.innerHTML = role === 'ai' ? formatText(text) : escapeHtml(text);
+  messagesDiv.appendChild(div);
+  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+  return div;
+}
+
+async function send() {
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  appendMsg('user', text);
+  history.push({ role: 'user', content: text });
+
+  const aiDiv = appendMsg('ai', '...');
+  let fullReply = '';
+  let statsHtml = '';
+
+  try {
+    const res = await fetch('http://localhost:11434/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'qwen2.5-coder:7b',
+        stream: true,
+        messages: [{ role: 'system', content: systemPrompt }, ...history]
+      })
+    });
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    aiDiv.innerHTML = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const lines = decoder.decode(value, { stream: true }).split('\n');
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        const json = JSON.parse(line);
+        if (json.message?.content) {
+          fullReply += json.message.content;
+          aiDiv.innerHTML = formatText(fullReply);
+          messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+        if (json.done && json.eval_count && json.eval_duration) {
+          const sec = (json.eval_duration / 1e9).toFixed(2);
+          const tps = (json.eval_count / (json.eval_duration / 1e9)).toFixed(1);
+          statsHtml = `<div class="stats">⚡ RTX 5060 추론 성능: ${tps} tok/s (총 ${json.eval_count}토큰 / ${sec}초)</div>`;
+        }
+      }
+    }
+    aiDiv.innerHTML = formatText(fullReply) + statsHtml;
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    history.push({ role: 'assistant', content: fullReply });
+  } catch (err) {
+    aiDiv.innerText = '연결 오류: Ollama가 실행 중인지 확인해 주세요. (' + err.message + ')';
+  }
+}
+
+sendBtn.onclick = send;
+input.onkeydown = e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+};
+</script>
+</body>
+</html>
