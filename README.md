@@ -1,3 +1,10 @@
+
+
+
+
+<img width="613" height="982" alt="스크린샷 2026-11-18 161704" src="https://github.com/user-attachments/assets/14a73884-b9b8-49ff-9dd3-1f6d57133f16" />
+<img width="613" height="982" alt="image" src="https://github.com/user-attachments/assets/7003c7b2-4698-4151-b125-d28097f84ba3" />
+<img width="613" height="982" alt="image" src="https://github.com/user-attachments/assets/d30c9981-87a8-4f66-a606-11fc12433f7c" />
 # ⚡ Local AI Chat Web UI (RTX 5060)
 
 외부 클라우드 API 없이 로컬 환경(`Ollama`)에서 직접 구동되는 보안형 AI 채팅 웹 인터페이스입니다.
